@@ -1,0 +1,128 @@
+添加SELinux权限 
+第一步
+		定义类型, diagnosticsrv 要和添加服务用的名字保持一致
+		system/sepolicy/service_contexts
+		diagnosticsrv             u:object_r:diagnostic_service:s0
+		
+第二步
+        加入刚刚定义好的 diagnostic_service 类型, 表明它是系统服务
+        system/sepolicy/service.te 
+		type diagnostic_service, system_api_service, system_server_service, service_manager_type;
+
+第三步  
+       system/sepolicy/untrusted_app.te或者  device/qcom/sepolicy/byd/platform_app.te
+	   声明权限
+	   # 允许 untrusted_app 查找 diagnostic_service
+       allow untrusted_app diagnostic_service:service_manager find; 或者  allow platform_app diagnostic_service:service_manager find;
+第四步
+      假如我们要新增一个init 启动的service,名字叫diagnostic_service,    对应的执行档是/system/bin/diagnosticsrv
+      device/qcom/sepolicy/byd/file_contexts
+      /system/bin/diagnosticsrv u:object_r:diagnosticsrv_exec:s0	   绑定执行档 file_contexts 类型
+	  
+第五步
+      根据diagnosticsr进程 需要访问的文件以及设备, 定义其它的权限在diagnosticsr.te 中
+	   device/qcom/sepolicy/byd/diagnosticsrv.te
+	   
+第六步
+     	  / system/sepolicy/platform_app.te 
+allow platform_app diagnostic_service:service_manager find;
+
+
+
+#定义diagnosticsrv类型，init 启动service 时进行类型转换,	   
+type diagnosticsrv, domain;                                                                           domain 类型定义，将diagnosticsrv和domain关联
+type diagnosticsrv_exec, exec_type, file_type;                                                        执行档 入口定义
+typeattribute diagnosticsrv coredomain,socket_between_core_and_vendor_violators;                      将diagnosticsrv关联到后面的属性
+
+init_daemon_domain(diagnosticsrv)                                                                     domain 切换（这个是一个复杂的TE操作宏, 简单来说就是当init fork 子进程执行mediaserver_exec 这个类型的执行档时, 其domain 从init 切换到mediaserver.） 
+
+#    允许mediaserver 使用binder 服务 和发起 binder call.
+binder_use(diagnosticsrv)                                                                          
+binder_call(diagnosticsrv, binderservicedomain)
+binder_call(diagnosticsrv, appdomain)
+binder_call(diagnosticsrv, bootanim)
+binder_service(diagnosticsrv)
+
+net_domain(diagnosticsrv)
+
+#  允许mediaserver 做其他的一些操作.
+allow diagnosticsrv diagnostic_service:service_manager add;
+#allow diagnosticsrv auto_service:service_manager find;
+allow diagnosticsrv zygote_exec:file { read open execute getattr execute_no_trans };
+allow diagnosticsrv default_android_service:service_manager find;
+allow diagnosticsrv rootfs:lnk_file getattr;
+#allow diagnosticsrv sysfs:file { write read open getattr };
+allow diagnosticsrv shell_exec:file { read open execute execute_no_trans getattr map };
+allow diagnosticsrv toolbox_exec:file { getattr execute execute_no_trans read open map };
+#allow diagnosticsrv proc_diagnostic:file { read open };
+#allow diagnosticsrv sysfs_test:file { write open read };
+
+
+avc: denied { search } for name="thermal" dev="sysfs" ino=12061 scontext=u:r:diagnosticsrv:s0 tcontext=u:object_r:sysfs_therm_cputemp:s0 tclass=dir permissive=0
+
+
+
+audit(0.0:67): avc: denied { write } for path="/dev/block/vold/93:96" dev="tmpfs" ino=/1263 scontext=u:r:kernel:s0 tcontext=u:object_r:block_device:s0 tclass=blk_file permissive=0
+
+ 
+
+分析过程：
+
+缺少什么权限：      {undefined write }权限，
+
+谁缺少权限：        scontext=u:r:kernel:s0
+
+对哪个文件缺少权限：tcontext=u:object_r:block_device
+
+什么类型的文件：    tclass=blk_file
+
+完整的意思： kernel进程对block_device类型的blk_file缺少write权限。
+
+ 
+
+解决方法：在上文A位置，找到kernel.te这个文件，加入以下内容：
+
+allow  kernel  block_device:blk_file  write;
+
+make installclean后重新编译，刷boot.img才会生效。
+
+ 
+
+案例2
+
+audit(0.0:53): avc: denied { execute } for  path="/data/data/com.mofing/qt-reserved-files/plugins/platforms/libgnustl_shared.so" dev="nandl" ino=115502 scontext=u:r:platform_app:s0 tcontext=u:object_r:app_data_file:s0 tclass=file permissive=0
+
+ 
+
+分析过程：
+
+缺少什么权限：      {undefined execute}权限，
+
+谁缺少权限：        scontext = u:r:platform_app:s0
+
+对哪个文件缺少权限：tcontext = u:object_r:app_data_file
+
+什么类型的文件：    tclass= file
+
+完整的意思： platform_app进程对app_data_file类型的file缺少execute权限。
+
+ 
+
+解决方法：在上文A位置，找到platform_app.te这个文件，加入以下内容：
+
+allow  platform_app  app_data_file:file  execute;
+
+make installclean后重新编译，刷boot.img才会生效。
+————————————————
+版权声明：本文为CSDN博主「缥缈孤鸿影_love」的原创文章，遵循CC 4.0 BY-SA版权协议，转载请附上原文出处链接及本声明。
+原文链接：https://blog.csdn.net/tung214/article/details/72734086/
+ 
+ 
+ 
+SELinux权限问题分析过程:
+缺少什么权限： { write }权限
+谁缺少权限： scontext=u:r:kernel:s0
+对哪个文件缺少权限： tcontext=u:object_r:block_device
+什么类型的文件： tclass=blk_file
+解决方法：添加对应的规则，这里建议添加在对应的kernel.te里面
+allow kernel block_device:blk_file write;

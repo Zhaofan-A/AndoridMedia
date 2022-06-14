@@ -1,0 +1,48 @@
+adb shell "monkey -p com.oushang.vsirdescription --monitor-native-crashes --throttle 500 -v 1000000 > /sdcard/Monkey_cloudeye_log.txt"
+
+GPU查看  adb shell cat /sys/class/kgsl/kgsl-3d0/gpu_busy_percentage
+CPU    top -m 10 -s cpu
+dumpsys meminfo mediaserver
+
+/Di2UL/Release/di2ul_3.0ui_new_feature_dev/Di2UL_SE010_20210329/Di2UL_USERDEBUG_SIGN_SE010_202103291607_Q2700.zip
+adb shell pm list packages -e ""
+
+adb logcat -v time >D:\log.txt
+adb logcat > D:\11.log
+
+adb shell ps | grep logcat          # linux 平台
+adb shell ps | findstr "logcat"    #Windows平台
+
+logcat -v time -b all|grep -iE "VerSionion"
+
+
+logcat| grep -iE “”
+
+getprop | grep 189
+
+adb logcat | grep -E '^[VDE]/(TAG1|TAG2)'
+
+adb logcat | grep -i myapp   #忽略大小写。
+
+
+./keytool-importkeypair -k ./release.keystore -p youPassword -pk8 platform.pk8 -cert platform.x509.pem -alias youAlias
+
+
+
+adb shell settings get global auto_time
+
+adb shell settings put global sentrymode_enabled 0
+
+
+find . -name "*.c"
+
+df -h 查看分区信息
+
+adb shell getprop | grep heap    Android设备给每个应用分配的内存大小
+
+copy /z/y SentryMode1.apk Z:\project\di2ul_3.0ui_new_feature_dev\
+
+
+
+
+ 
