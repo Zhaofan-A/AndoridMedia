@@ -1,0 +1,5 @@
+<resources>
+    <string name="app_name">JNILearn</string>
+    <string name="start">Start</string>
+    <string name="test">测试</string>
+</resources>

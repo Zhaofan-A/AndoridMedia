@@ -1,0 +1,3 @@
+include ':app', ':recordLib'
+//, ':mylibrary'
+rootProject.name='SentryModeSDK'
